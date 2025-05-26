@@ -1,12 +1,8 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
-import '../../models/zona_restringida.dart';
-import '../../services/api_service_zonas.dart';
-import '../../utils/location_utils.dart';
-import '../../widgets/loading_indicator.dart';
-import '../../services/api_service_zonas.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:location/location.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -16,180 +12,256 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final Completer<GoogleMapController> _controller = Completer();
-  
-  CameraPosition _initialPosition = const CameraPosition(
-    target: LatLng(-19.047961, -65.260443),
-    zoom: 17,
-  );
-  
-  Position? _currentPosition;
-  Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
-  bool _isLoading = true;
-  List<ZonaRestringida> _zonasRestringidas = [];
-  final ApiServiceZonas _apiService = ApiServiceZonas();
+  GoogleMapController? _controller;
+  final Set<Polygon> _polygons = {}; // Para la zona restringida
+  final Set<Polyline> _polylines = {}; // Para las franjas rojas
+  String? _errorMessage; // Para mostrar errores de la API o ubicación
+  LocationData? _currentLocation; // Para la ubicación actual
+  final Location _location = Location();
+
+  // API para restricciones de estacionamiento
+  final String restrictionsApiUrl = 'http://192.168.1.10:8000/api/zonas-restringidas/'; // Para dispositivo físico
+  // final String restrictionsApiUrl = 'http://10.0.2.2:8000/api/restrictions/'; // Descomenta para emulador
+
+  // Modo de visualización: 'restrictions' (calles), 'zone' (polígono), 'both' (ambos)
+  String _displayMode = 'both';
 
   @override
   void initState() {
     super.initState();
-    _loadLocation();
-    _fetchZonasRestringidas();
+    _loadRestrictions(); // Carga las calles restringidas desde la API
+    _loadRestrictedZone(); // Carga la zona restringida con coordenadas estáticas
+    _getCurrentLocation(); // Obtiene la ubicación actual
   }
 
-  Future<void> _loadLocation() async {
-    final position = await LocationUtils.determinePosition(context);
-    if (position != null) {
-      setState(() {
-        _currentPosition = position;
-        _markers = {
-          Marker(
-            markerId: const MarkerId('currentLocation'),
-            position: LatLng(position.latitude, position.longitude),
-            infoWindow: const InfoWindow(title: 'Mi ubicación'),
-          ),
-        };
-      });
-    }
-    setState(() {
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _fetchZonasRestringidas() async {
+  // Obtener la ubicación actual
+  Future<void> _getCurrentLocation() async {
+    print('Iniciando obtención de ubicación...');
     try {
-      final zonasRestringidas = await _apiService.getZonasRestringidas();
+      bool serviceEnabled = await _location.serviceEnabled();
+      print('Servicio de ubicación habilitado: $serviceEnabled');
+      if (!serviceEnabled) {
+        serviceEnabled = await _location.requestService();
+        print('Solicitando servicio de ubicación: $serviceEnabled');
+        if (!serviceEnabled) {
+          setState(() {
+            _errorMessage = 'El servicio de ubicación está deshabilitado.';
+          });
+          return;
+        }
+      }
+
+      PermissionStatus permissionGranted = await _location.hasPermission();
+      print('Estado del permiso: $permissionGranted');
+      if (permissionGranted == PermissionStatus.denied) {
+        permissionGranted = await _location.requestPermission();
+        print('Solicitando permiso: $permissionGranted');
+        if (permissionGranted != PermissionStatus.granted) {
+          setState(() {
+            _errorMessage = 'Permiso de ubicación denegado.';
+          });
+          return;
+        }
+      }
+
+      final locationData = await _location.getLocation();
+      print('Ubicación obtenida: lat=${locationData.latitude}, lon=${locationData.longitude}');
       setState(() {
-        _zonasRestringidas = zonasRestringidas;
+        _currentLocation = locationData;
       });
-      _addNoParkingZones();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar zonas restringidas: $e'),
-            backgroundColor: Colors.red,
+
+      if (_controller != null && locationData.latitude != null && locationData.longitude != null) {
+        _controller!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(locationData.latitude!, locationData.longitude!),
+              zoom: 15,
+            ),
           ),
         );
-        // Si falla la API, usamos las zonas estáticas como fallback
-        _addStaticNoParkingZones();
       }
+    } catch (e) {
+      print('Error al obtener ubicación: $e');
+      setState(() {
+        _errorMessage = 'Error al obtener ubicación: $e';
+      });
     }
   }
 
-  void _addStaticNoParkingZones() {
-    // Código original para zonas estáticas como fallback
-    final List<LatLng> zone1 = [
-      const LatLng(-19.047961, -65.260443),
-      const LatLng(-19.048707, -65.259516),
-    ];
-    
-    final List<LatLng> zone2 = [
-      const LatLng(-19.047232, -65.261388),
-      const LatLng(-19.047948, -65.260511),
-    ];
-    
-    final List<LatLng> zone3 = [
-      const LatLng(-19.048087, -65.262121),
-      const LatLng(-19.047228, -65.261365),
-    ];
-    
-    setState(() {
-      _polylines = {
-        Polyline(
-          polylineId: const PolylineId('no_parking_zone_1'),
-          points: zone1,
-          color: const Color.fromARGB(255, 255, 0, 0),
-          width: 15,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-          jointType: JointType.round,
-          patterns: [PatternItem.dash(10), PatternItem.gap(5)],
-        ),
-        Polyline(
-          polylineId: const PolylineId('no_parking_zone_2'),
-          points: zone2,
-          color: const Color.fromARGB(255, 255, 0, 0),
-          width: 15,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-          jointType: JointType.round,
-          patterns: [PatternItem.dash(10), PatternItem.gap(5)],
-        ),
-        Polyline(
-          polylineId: const PolylineId('no_parking_zone_3'),
-          points: zone3,
-          color: const Color.fromARGB(255, 255, 0, 0),
-          width: 15,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-          jointType: JointType.round,
-          patterns: [PatternItem.dash(10), PatternItem.gap(5)],
-        ),
-      };
-      _isLoading = false;
-    });
+  // Cargar restricciones de estacionamiento desde la API
+  Future<void> _loadRestrictions() async {
+    try {
+      print('Intentando cargar restricciones desde: $restrictionsApiUrl');
+      final response = await http.get(Uri.parse(restrictionsApiUrl));
+      print('Código de estado: ${response.statusCode}');
+      print('Respuesta: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        print('Datos recibidos: $data');
+
+        if (data.isEmpty) {
+          setState(() {
+            _errorMessage = 'No se encontraron restricciones.';
+          });
+          return;
+        }
+
+        setState(() {
+          _polylines.clear(); // Limpiar líneas anteriores
+          for (var item in data) {
+            if (item['coordenada1_lat'] != null &&
+                item['coordenada1_lon'] != null &&
+                item['coordenada2_lat'] != null &&
+                item['coordenada2_lon'] != null) {
+              _polylines.add(
+                Polyline(
+                  polylineId: PolylineId('restriction_${item['id']}'),
+                  points: [
+                    LatLng(item['coordenada1_lat'], item['coordenada1_lon']),
+                    LatLng(item['coordenada2_lat'], item['coordenada2_lon']),
+                  ],
+                  color: Colors.red,
+                  width: 6,
+                ),
+              );
+            } else {
+              print('Datos incompletos en: $item');
+            }
+          }
+          _errorMessage = _polylines.isEmpty
+              ? 'No se pudieron cargar restricciones válidas.'
+              : null;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Error al cargar restricciones: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      print('Error de conexión: $e');
+      setState(() {
+        _errorMessage = 'Error de conexión: $e';
+      });
+    }
   }
 
-  void _addNoParkingZones() {
-    final Set<Polyline> polylines = {};
-    
-    // Convertir las zonas de la API a polilíneas
-    for (var i = 0; i < _zonasRestringidas.length; i++) {
-      final zona = _zonasRestringidas[i];
-      
-      List<LatLng> points = [
-        LatLng(zona.coordenada1_lat, zona.coordenada1_lon),
-        LatLng(zona.coordenada2_lat, zona.coordenada2_lon),
-      ];
-      
-      polylines.add(
-        Polyline(
-          polylineId: PolylineId('no_parking_zone_$i'),
-          points: points,
-          color: const Color.fromARGB(255, 255, 0, 0),
-          width: 10,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-          jointType: JointType.round,
-          patterns: [PatternItem.dash(10), PatternItem.gap(5)],
+  // Cargar coordenadas estáticas de la zona restringida
+  void _loadRestrictedZone() {
+    final List<LatLng> polygonPoints = [
+      LatLng(-19.048, -65.260), // Punto 1
+      LatLng(-19.048, -65.258), // Punto 2
+      LatLng(-19.050, -65.258), // Punto 3
+      LatLng(-19.050, -65.260), // Punto 4
+      LatLng(-19.049, -65.259), // Punto 5
+    ];
+
+    setState(() {
+      _polygons.clear(); // Limpiar polígonos anteriores
+      _polygons.add(
+        Polygon(
+          polygonId: const PolygonId('restricted_zone'),
+          points: polygonPoints,
+          fillColor: Colors.yellow.withOpacity(0.3),
+          strokeColor: Colors.yellow,
+          strokeWidth: 2,
         ),
       );
-    }
-    
-    setState(() {
-      _polylines = polylines;
-      _isLoading = false;
     });
+  }
+
+  // Alternar modo de visualización
+  void _toggleDisplayMode() {
+    setState(() {
+      if (_displayMode == 'both') {
+        _displayMode = 'restrictions';
+      } else if (_displayMode == 'restrictions') {
+        _displayMode = 'zone';
+      } else {
+        _displayMode = 'both';
+      }
+    });
+  }
+
+  // Obtener el icono según el modo
+  IconData _getModeIcon() {
+    switch (_displayMode) {
+      case 'restrictions':
+        return Icons.directions;
+      case 'zone':
+        return Icons.crop_square;
+      default:
+        return Icons.layers;
+    }
+  }
+
+  // Obtener los polylines según el modo
+  Set<Polyline> _getVisiblePolylines() {
+    return _displayMode == 'restrictions' || _displayMode == 'both' ? _polylines : {};
+  }
+
+  // Obtener los polígonos según el modo
+  Set<Polygon> _getVisiblePolygons() {
+    return _displayMode == 'zone' || _displayMode == 'both' ? _polygons : {};
   }
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? const LoadingIndicator()
-        : Stack(
-            children: [
-              GoogleMap(
-                mapType: MapType.normal,
-                initialCameraPosition: _initialPosition,
-                myLocationEnabled: true,
-                myLocationButtonEnabled: true,
-                markers: _markers,
-                polylines: _polylines,
-                onMapCreated: (GoogleMapController controller) {
-                  _controller.complete(controller);
-                },
+    return Scaffold(
+      body: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: const CameraPosition(
+              target: LatLng(-19.048, -65.260),
+              zoom: 15,
+            ),
+            onMapCreated: (GoogleMapController controller) {
+              _controller = controller;
+              if (_currentLocation != null) {
+                controller.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: LatLng(_currentLocation!.latitude!, _currentLocation!.longitude!),
+                      zoom: 15,
+                    ),
+                  ),
+                );
+              }
+            },
+            polygons: _getVisiblePolygons(), // Muestra el polígono según el modo
+            polylines: _getVisiblePolylines(), // Muestra las franjas según el modo
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+          ),
+          Positioned(
+            top: 50,
+            left: 10,
+            child: FloatingActionButton(
+              onPressed: _toggleDisplayMode,
+              backgroundColor: Colors.white,
+              child: Icon(
+                _getModeIcon(),
+                color: Colors.black,
               ),
-              Positioned(
-                bottom: 16,
-                right: 16,
-                child: FloatingActionButton(
-                  onPressed: _fetchZonasRestringidas,
-                  tooltip: 'Actualizar zonas',
-                  child: const Icon(Icons.refresh),
+            ),
+          ),
+          if (_errorMessage != null)
+            Positioned(
+              top: 10,
+              left: 10,
+              right: 10,
+              child: Container(
+                color: Colors.red.withOpacity(0.8),
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.white),
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ],
-          );
+            ),
+        ],
+      ),
+    );
   }
 }
