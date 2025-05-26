@@ -6,6 +6,7 @@ import 'map_screen.dart';
 import 'info_screen.dart';
 import 'admin_screen.dart';
 import '../auth/auth_screen.dart';
+import '../../second_app/screens/second_app_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String role;
@@ -26,7 +27,6 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     
-    // Pantallas base para todos los usuarios
     _screens = [
       const MapScreen(), // Índice 0
       InfoScreen(
@@ -41,13 +41,12 @@ class _MainScreenState extends State<MainScreen> {
         title: 'Ayuda', 
         message: AppConstants.contactoAyuda,
       ), // Índice 3
-      
-      // Pantalla de Admin solo para policías (índice 4)
-      if (widget.role == Roles.policia)
-        const AdminScreen(),
+      if (widget.role == Roles.policia) ...[
+        const AdminScreen(), // Índice 4 para policía
+        const SecondAppScreen(), // Índice 5 para policía
+      ],
     ];
 
-    // Mostrar mensaje de bienvenida
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -72,9 +71,22 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   String _getAppBarTitle() {
-    if (_currentIndex == 0) return 'Mapa Principal';
-    if (_currentIndex == 4) return 'Panel de Administración';
-    return _screens[_currentIndex].toStringShort();
+    switch (_currentIndex) {
+      case 0:
+        return 'Mapa Principal';
+      case 1:
+        return 'Código de Tránsito';
+      case 2:
+        return 'Horarios';
+      case 3:
+        return 'Ayuda';
+      case 4:
+        return widget.role == Roles.policia ? 'Panel de Administración' : '';
+      case 5:
+        return widget.role == Roles.policia ? 'Notificaciones API' : '';
+      default:
+        return 'App de Tránsito Inteligente';
+    }
   }
 
   @override
@@ -143,16 +155,20 @@ class _MainScreenState extends State<MainScreen> {
                       isActive: _currentIndex == 3,
                       onPressed: () => _changeScreen(3),
                     ),
-                    
-                    // Botón de Admin solo para policías
-                    if (widget.role == Roles.policia)
+                    if (widget.role == Roles.policia) ...[
                       MenuButton(
                         icon: Icons.admin_panel_settings,
                         label: 'Admin',
                         isActive: _currentIndex == 4,
                         onPressed: () => _changeScreen(4),
                       ),
-                    
+                      MenuButton(
+                        icon: Icons.notifications,
+                        label: 'Notificaciones',
+                        isActive: _currentIndex == 5,
+                        onPressed: () => _changeScreen(5),
+                      ),
+                    ],
                     const Spacer(),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
