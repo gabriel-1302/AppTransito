@@ -125,57 +125,258 @@ class _MainScreenState extends State<MainScreen> {
               top: 0,
               bottom: 0,
               child: Container(
-                width: 200,
-                color: Colors.white.withOpacity(0.9),
+                width: 220,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(-2, 0),
+                    ),
+                  ],
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 20),
-                    MenuButton(
-                      icon: Icons.map,
-                      label: ' Mapa',
-                      isActive: _currentIndex == 0,
-                      onPressed: () => _changeScreen(0),
-                    ),
-                    MenuButton(
-                      icon: Icons.info,
-                      label: ' Información',
-                      isActive: _currentIndex == 1,
-                      onPressed: () => _changeScreen(1),
-                    ),
-                    MenuButton(
-                      icon: Icons.timelapse,
-                      label: 'Horarios',
-                      isActive: _currentIndex == 2,
-                      onPressed: () => _changeScreen(2),
-                    ),
-                    MenuButton(
-                      icon: Icons.help,
-                      label: 'Ayuda',
-                      isActive: _currentIndex == 3,
-                      onPressed: () => _changeScreen(3),
-                    ),
-                    if (widget.role == Roles.policia) ...[
-                      MenuButton(
-                        icon: Icons.admin_panel_settings,
-                        label: 'Admin',
-                        isActive: _currentIndex == 4,
-                        onPressed: () => _changeScreen(4),
+                    
+                    // Botón Mapa
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                      child: Material(
+                        color: _currentIndex == 0 ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8.0),
+                          onTap: () => _changeScreen(0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.map,
+                                  color: _currentIndex == 0 ? Colors.blue : Colors.grey[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12.0),
+                                Expanded(
+                                  child: Text(
+                                    'Mapa',
+                                    style: TextStyle(
+                                      color: _currentIndex == 0 ? Colors.blue : Colors.grey[700],
+                                      fontWeight: _currentIndex == 0 ? FontWeight.bold : FontWeight.normal,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                      MenuButton(
-                        icon: Icons.notifications,
-                        label: 'Notificaciones',
-                        isActive: _currentIndex == 5,
-                        onPressed: () => _changeScreen(5),
+                    ),
+                    
+                    // Botón Información
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                      child: Material(
+                        color: _currentIndex == 1 ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8.0),
+                          onTap: () => _changeScreen(1),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info,
+                                  color: _currentIndex == 1 ? Colors.blue : Colors.grey[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12.0),
+                                Expanded(
+                                  child: Text(
+                                    'Información',
+                                    style: TextStyle(
+                                      color: _currentIndex == 1 ? Colors.blue : Colors.grey[700],
+                                      fontWeight: _currentIndex == 1 ? FontWeight.bold : FontWeight.normal,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Botón Horarios
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                      child: Material(
+                        color: _currentIndex == 2 ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8.0),
+                          onTap: () => _changeScreen(2),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  color: _currentIndex == 2 ? Colors.blue : Colors.grey[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12.0),
+                                Expanded(
+                                  child: Text(
+                                    'Horarios',
+                                    style: TextStyle(
+                                      color: _currentIndex == 2 ? Colors.blue : Colors.grey[700],
+                                      fontWeight: _currentIndex == 2 ? FontWeight.bold : FontWeight.normal,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Botón Ayuda
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                      child: Material(
+                        color: _currentIndex == 3 ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8.0),
+                          onTap: () => _changeScreen(3),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.help,
+                                  color: _currentIndex == 3 ? Colors.blue : Colors.grey[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12.0),
+                                Expanded(
+                                  child: Text(
+                                    'Ayuda',
+                                    style: TextStyle(
+                                      color: _currentIndex == 3 ? Colors.blue : Colors.grey[700],
+                                      fontWeight: _currentIndex == 3 ? FontWeight.bold : FontWeight.normal,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Botones específicos para policía
+                    if (widget.role == Roles.policia) ...[
+                      // Botón Admin
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                        child: Material(
+                          color: _currentIndex == 4 ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8.0),
+                            onTap: () => _changeScreen(4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.admin_panel_settings,
+                                    color: _currentIndex == 4 ? Colors.green : Colors.grey[700],
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12.0),
+                                  Expanded(
+                                    child: Text(
+                                      'Admin',
+                                      style: TextStyle(
+                                        color: _currentIndex == 4 ? Colors.green : Colors.grey[700],
+                                        fontWeight: _currentIndex == 4 ? FontWeight.bold : FontWeight.normal,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Botón Notificaciones
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                        child: Material(
+                          color: _currentIndex == 5 ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8.0),
+                            onTap: () => _changeScreen(5),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.notifications,
+                                    color: _currentIndex == 5 ? Colors.green : Colors.grey[700],
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12.0),
+                                  Expanded(
+                                    child: Text(
+                                      'Notificaciones',
+                                      style: TextStyle(
+                                        color: _currentIndex == 5 ? Colors.green : Colors.grey[700],
+                                        fontWeight: _currentIndex == 5 ? FontWeight.bold : FontWeight.normal,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
+                    
                     const Spacer(),
+                    
+                    // Botón Cerrar Sesión
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.logout),
                         label: const Text('Cerrar Sesión'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[400],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                        ),
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
