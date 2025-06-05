@@ -20,7 +20,7 @@ class _MapScreenState extends State<MapScreen> {
   final Location _location = Location();
 
   // API para restricciones de estacionamiento
-  final String restrictionsApiUrl = 'http://192.168.1.10:8000/api/zonas-restringidas/'; // Para dispositivo físico
+  final String restrictionsApiUrl = 'http://192.168.1.9:8000/api/zonas-restringidas/'; // Para dispositivo físico
   // final String restrictionsApiUrl = 'http://10.0.2.2:8000/api/restrictions/'; // Descomenta para emulador
 
   // Modo de visualización: 'restrictions' (calles), 'zone' (polígono), 'both' (ambos)
@@ -149,11 +149,10 @@ class _MapScreenState extends State<MapScreen> {
   // Cargar coordenadas estáticas de la zona restringida
   void _loadRestrictedZone() {
     final List<LatLng> polygonPoints = [
-      LatLng(-19.048, -65.260), // Punto 1
-      LatLng(-19.048, -65.258), // Punto 2
-      LatLng(-19.050, -65.258), // Punto 3
-      LatLng(-19.050, -65.260), // Punto 4
-      LatLng(-19.049, -65.259), // Punto 5
+      LatLng(-19.043649, -65.259926), // Punto 1
+      LatLng(-19.048225, -65.263821), // Punto 2
+      LatLng(-19.052142742264422, -65.259280231523),
+      LatLng(-19.04746079069352, -65.25523259852747), // Punto 4
     ];
 
     setState(() {

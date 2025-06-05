@@ -17,7 +17,7 @@ class InfoScreen extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: Colors.blue,
+                color: const Color.fromARGB(255, 0, 0, 0),
                 fontWeight: FontWeight.bold,
               ),
             ),

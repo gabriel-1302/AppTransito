@@ -73,7 +73,7 @@ class _MainScreenState extends State<MainScreen> {
   String _getAppBarTitle() {
     switch (_currentIndex) {
       case 0:
-        return 'Mapa Principal';
+        return 'Mapa';
       case 1:
         return 'Código de Tránsito';
       case 2:
@@ -89,28 +89,29 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  // Método para obtener el color del AppBar según el rol
+  Color _getAppBarColor() {
+    return widget.role == Roles.ciudadano 
+        ? Colors.blue // Azul para Ciudadano
+        : Colors.green; // Verde para Policía
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_getAppBarTitle()),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(
+          _getAppBarTitle(),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: _getAppBarColor(),
+        elevation: 4,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: IconButton(
-              icon: const Icon(Icons.menu),
+              icon: const Icon(Icons.menu, color: Colors.white),
               onPressed: _toggleMenu,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Chip(
-              label: Text(
-                widget.role == Roles.ciudadano ? 'Ciudadano' : 'Policía',
-                style: const TextStyle(color: Colors.white),
-              ),
-              backgroundColor: roleColors[widget.role],
             ),
           ),
         ],
@@ -133,13 +134,13 @@ class _MainScreenState extends State<MainScreen> {
                     const SizedBox(height: 20),
                     MenuButton(
                       icon: Icons.map,
-                      label: 'Mapa',
+                      label: ' Mapa',
                       isActive: _currentIndex == 0,
                       onPressed: () => _changeScreen(0),
                     ),
                     MenuButton(
                       icon: Icons.info,
-                      label: 'Información',
+                      label: ' Información',
                       isActive: _currentIndex == 1,
                       onPressed: () => _changeScreen(1),
                     ),
