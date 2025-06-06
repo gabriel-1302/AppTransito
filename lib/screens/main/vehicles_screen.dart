@@ -60,7 +60,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
 
       if (response.statusCode == 200) {
         setState(() {
-          vehicles = json.decode(response.body);
+          vehicles = json.decode(utf8.decode(response.bodyBytes));
           isLoading = false;
         });
       } else {
@@ -70,7 +70,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         });
       }
     } catch (e) {
-      print('Excepción en fetchVehicles: $e');
+      print('Error en fetchVehicles: $e');
       setState(() {
         errorMessage = 'Error al cargar vehículos: $e';
         isLoading = false;
@@ -86,10 +86,10 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       final response = await http.post(
         Uri.parse('http://192.168.1.10:8080/api/vehicles/'),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer ${widget.token}',
         },
-        body: json.encode({
+        body: jsonEncode({
           'marca': marcaController.text,
           'modelo': modeloController.text,
           'color': colorController.text,
@@ -108,14 +108,15 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         modeloController.clear();
         colorController.clear();
         anioController.clear();
-        fetchVehicles();
+        await fetchVehicles();
       } else {
+        final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar vehículo: ${response.body}')),
+          SnackBar(content: Text('Error al guardar vehículo: ${error['error'] ?? response.body}')),
         );
       }
     } catch (e) {
-      print('Excepción en saveVehicle: $e');
+      print('Error en saveVehicle: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al guardar vehículo: $e')),
       );
