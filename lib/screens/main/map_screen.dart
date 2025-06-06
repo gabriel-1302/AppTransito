@@ -20,7 +20,7 @@ class _MapScreenState extends State<MapScreen> {
   final Location _location = Location();
 
   // API para restricciones de estacionamiento
-  final String restrictionsApiUrl = 'http://192.168.1.9:8000/api/zonas-restringidas/'; // Para dispositivo físico
+  final String restrictionsApiUrl = 'http://192.168.1.10:8000/api/zonas-restringidas/'; // Para dispositivo físico
   // final String restrictionsApiUrl = 'http://10.0.2.2:8000/api/restrictions/'; // Descomenta para emulador
 
   // Modo de visualización: 'restrictions' (calles), 'zone' (polígono), 'both' (ambos)

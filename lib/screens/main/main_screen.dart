@@ -5,13 +5,22 @@ import '../../widgets/menu_button.dart';
 import 'map_screen.dart';
 import 'info_screen.dart';
 import 'admin_screen.dart';
+import 'vehicles_screen.dart';
 import '../auth/auth_screen.dart';
+import '../../services/api_service_auth.dart'; // Importar ApiServiceAuth
 import '../../second_app/screens/second_app_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String role;
+  final String token;
+  final int userProfileId;
 
-  const MainScreen({super.key, required this.role});
+  const MainScreen({
+    super.key,
+    required this.role,
+    required this.token,
+    required this.userProfileId,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -41,9 +50,14 @@ class _MainScreenState extends State<MainScreen> {
         title: 'Ayuda', 
         message: AppConstants.contactoAyuda,
       ), // Índice 3
+      VehiclesScreen(
+        token: widget.token,
+        role: widget.role, // Agregar el parámetro role
+        userProfileId: widget.userProfileId,
+      ), // Índice 4
       if (widget.role == Roles.policia) ...[
-        const AdminScreen(), // Índice 4 para policía
-        const SecondAppScreen(), // Índice 5 para policía
+        const AdminScreen(), // Índice 5 para policía
+        const SecondAppScreen(), // Índice 6 para policía
       ],
     ];
 
@@ -81,15 +95,16 @@ class _MainScreenState extends State<MainScreen> {
       case 3:
         return 'Ayuda';
       case 4:
-        return widget.role == Roles.policia ? 'Panel de Administración' : '';
+        return 'Autos';
       case 5:
+        return widget.role == Roles.policia ? 'Panel de Administración' : '';
+      case 6:
         return widget.role == Roles.policia ? 'Notificaciones API' : '';
       default:
         return 'App de Tránsito Inteligente';
     }
   }
 
-  // Método para obtener el color del AppBar según el rol
   Color _getAppBarColor() {
     return widget.role == Roles.ciudadano 
         ? Colors.blue // Azul para Ciudadano
@@ -286,24 +301,60 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                     
+                    // Botón Autos
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                      child: Material(
+                        color: _currentIndex == 4 ? Colors.blue : Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8.0),
+                          onTap: () => _changeScreen(4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.directions_car,
+                                  color: _currentIndex == 4 ? Colors.blue : Colors.grey[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12.0),
+                                Expanded(
+                                  child: Text(
+                                    'Autos',
+                                    style: TextStyle(
+                                      color: _currentIndex == 4 ? Colors.blue : Colors.grey[700],
+                                      fontWeight: _currentIndex == 4 ? FontWeight.bold : FontWeight.normal,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
                     // Botones específicos para policía
                     if (widget.role == Roles.policia) ...[
                       // Botón Admin
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                         child: Material(
-                          color: _currentIndex == 4 ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                          color: _currentIndex == 5 ? Colors.green.withOpacity(0.1) : Colors.transparent,
                           borderRadius: BorderRadius.circular(8.0),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(8.0),
-                            onTap: () => _changeScreen(4),
+                            onTap: () => _changeScreen(5),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                               child: Row(
                                 children: [
                                   Icon(
                                     Icons.admin_panel_settings,
-                                    color: _currentIndex == 4 ? Colors.green : Colors.grey[700],
+                                    color: _currentIndex == 5 ? Colors.green : Colors.grey[700],
                                     size: 20,
                                   ),
                                   const SizedBox(width: 12.0),
@@ -311,8 +362,8 @@ class _MainScreenState extends State<MainScreen> {
                                     child: Text(
                                       'Admin',
                                       style: TextStyle(
-                                        color: _currentIndex == 4 ? Colors.green : Colors.grey[700],
-                                        fontWeight: _currentIndex == 4 ? FontWeight.bold : FontWeight.normal,
+                                        color: _currentIndex == 5 ? Colors.green : Colors.grey[700],
+                                        fontWeight: _currentIndex == 5 ? FontWeight.bold : FontWeight.normal,
                                         fontSize: 14,
                                       ),
                                     ),
@@ -328,18 +379,18 @@ class _MainScreenState extends State<MainScreen> {
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                         child: Material(
-                          color: _currentIndex == 5 ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                          color: _currentIndex == 6 ? Colors.green.withOpacity(0.1) : Colors.transparent,
                           borderRadius: BorderRadius.circular(8.0),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(8.0),
-                            onTap: () => _changeScreen(5),
+                            onTap: () => _changeScreen(6),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                               child: Row(
                                 children: [
                                   Icon(
                                     Icons.notifications,
-                                    color: _currentIndex == 5 ? Colors.green : Colors.grey[700],
+                                    color: _currentIndex == 6 ? Colors.green : Colors.grey[700],
                                     size: 20,
                                   ),
                                   const SizedBox(width: 12.0),
@@ -347,8 +398,8 @@ class _MainScreenState extends State<MainScreen> {
                                     child: Text(
                                       'Notificaciones',
                                       style: TextStyle(
-                                        color: _currentIndex == 5 ? Colors.green : Colors.grey[700],
-                                        fontWeight: _currentIndex == 5 ? FontWeight.bold : FontWeight.normal,
+                                        color: _currentIndex == 6 ? Colors.green : Colors.grey[700],
+                                        fontWeight: _currentIndex == 6 ? FontWeight.bold : FontWeight.normal,
                                         fontSize: 14,
                                       ),
                                     ),
@@ -377,13 +428,20 @@ class _MainScreenState extends State<MainScreen> {
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                         ),
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AuthScreen(),
-                            ),
-                          );
+                        onPressed: () async {
+                          try {
+                            await ApiServiceAuth().logout();
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AuthScreen(),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error al cerrar sesión: $e')),
+                            );
+                          }
                         },
                       ),
                     ),

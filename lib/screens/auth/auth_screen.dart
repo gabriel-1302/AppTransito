@@ -59,22 +59,67 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     final username = _usernameController.text;
     final password = _passwordController.text;
 
-    final result = await _apiService.authenticate(username, password);
+    try {
+      final result = await _apiService.authenticate(username, password);
+      print('Resultado de authenticate: $result');
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (result['success']) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MainScreen(role: result['role']),
-        ),
-      );
-    } else {
       setState(() {
-        _errorMessage = result['message'];
+        _isLoading = false;
+      });
+
+      if (result['success'] == true) {
+        // Depuración detallada
+        print('token: ${result['token']}');
+        print('role: ${result['role']}');
+        print('user: ${result['user']}');
+        print('user[id]: ${result['user']?['id']}');
+
+        // Verificar que los datos necesarios estén presentes
+        if (result['token'] == null) {
+          setState(() {
+            _errorMessage = 'Falta el token en la respuesta';
+          });
+          return;
+        }
+        if (result['role'] == null) {
+          setState(() {
+            _errorMessage = 'Falta el role en la respuesta';
+          });
+          return;
+        }
+        if (result['user'] == null) {
+          setState(() => {
+            _errorMessage = 'Falta el user en la respuesta'
+          });
+          return;
+        }
+        if (result['user']['id'] == null) {
+          setState(() {
+            _errorMessage = 'Falta el user[id] en la respuesta';
+          });
+          return;
+        }
+
+        // Navegar a MainScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScreen(
+              role: result['role'],
+              token: result['token'],
+              userProfileId: result['user']['id'],
+            ),
+          ),
+        );
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'Error desconocido';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Error: $e';
       });
     }
   }
