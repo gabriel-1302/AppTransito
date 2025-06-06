@@ -31,7 +31,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   @override
   void initState() {
     super.initState();
-    print('Token recibido en VehiclesScreen: ${widget.token}'); // Depuración
+    print('Token recibido en VehiclesScreen: ${widget.token}');
     fetchVehicles();
   }
 
@@ -46,33 +46,17 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
 
   Future<void> fetchVehicles() async {
     try {
-      // Prueba con 'Token' primero
-      var response = await http.get(
+      final response = await http.get(
         Uri.parse('http://192.168.1.10:8080/api/vehicles/'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Token ${widget.token}',
+          'Authorization': 'Bearer ${widget.token}',
         },
       );
 
-      print('Estado de la respuesta /vehicles/ (Token): ${response.statusCode}'); // Depuración
-      print('Cuerpo de la respuesta (Token): ${response.body}'); // Depuración
-      print('Encabezado Authorization enviado: Token ${widget.token}'); // Depuración
-
-      if (response.statusCode == 401) {
-        // Si falla con 'Token', prueba con 'Bearer'
-        response = await http.get(
-          Uri.parse('http://192.168.1.10:8080/api/vehicles/'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ${widget.token}',
-          },
-        );
-
-        print('Estado de la respuesta /vehicles/ (Bearer): ${response.statusCode}'); // Depuración
-        print('Cuerpo de la respuesta (Bearer): ${response.body}'); // Depuración
-        print('Encabezado Authorization enviado: Bearer ${widget.token}'); // Depuración
-      }
+      print('Estado de la respuesta /vehicles/: ${response.statusCode}');
+      print('Cuerpo de la respuesta: ${response.body}');
+      print('Encabezado Authorization enviado: Bearer ${widget.token}');
 
       if (response.statusCode == 200) {
         setState(() {
@@ -86,7 +70,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         });
       }
     } catch (e) {
-      print('Excepción en fetchVehicles: $e'); // Depuración
+      print('Excepción en fetchVehicles: $e');
       setState(() {
         errorMessage = 'Error al cargar vehículos: $e';
         isLoading = false;
@@ -95,46 +79,26 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   }
 
   Future<void> saveVehicle() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (marcaController.text.isEmpty ||
-        modeloController.text.isEmpty ||
-        colorController.text.isEmpty ||
-        anioController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Todos los campos son obligatorios')),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     try {
       int anio = int.parse(anioController.text);
-      if (anio < 1900 || anio > DateTime.now().year) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Año inválido')),
-        );
-        return;
-      }
-
       final response = await http.post(
         Uri.parse('http://192.168.1.10:8080/api/vehicles/'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Token ${widget.token}', // Cambia a 'Bearer' si es necesario
+          'Authorization': 'Bearer ${widget.token}',
         },
         body: json.encode({
           'marca': marcaController.text,
           'modelo': modeloController.text,
           'color': colorController.text,
-          'anio': anio,
-          'user_profile': widget.userProfileId,
+          'año': anio,
         }),
       );
 
-      print('Estado de la respuesta POST /vehicles/: ${response.statusCode}'); // Depuración
-      print('Cuerpo de la respuesta POST: ${response.body}'); // Depuración
+      print('Estado de la respuesta POST /vehicles/: ${response.statusCode}');
+      print('Cuerpo de la respuesta POST: ${response.body}');
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -144,14 +108,14 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         modeloController.clear();
         colorController.clear();
         anioController.clear();
-        fetchVehicles(); // Actualizar lista
+        fetchVehicles();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar vehículo: ${response.statusCode}')),
+          SnackBar(content: Text('Error al guardar vehículo: ${response.body}')),
         );
       }
     } catch (e) {
-      print('Excepción en saveVehicle: $e'); // Depuración
+      print('Excepción en saveVehicle: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al guardar vehículo: $e')),
       );
@@ -171,7 +135,6 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
               ? Center(child: Text(errorMessage, style: const TextStyle(color: Colors.red)))
               : Column(
                   children: [
-                    // Formulario para agregar vehículo
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Card(
@@ -201,12 +164,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Por favor ingresa la marca';
-                                    }
-                                    return null;
-                                  },
+                                  validator: (value) =>
+                                      value!.isEmpty ? 'Por favor ingresa la marca' : null,
                                 ),
                                 const SizedBox(height: 12),
                                 TextFormField(
@@ -217,12 +176,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Por favor ingresa el modelo';
-                                    }
-                                    return null;
-                                  },
+                                  validator: (value) =>
+                                      value!.isEmpty ? 'Por favor ingresa el modelo' : null,
                                 ),
                                 const SizedBox(height: 12),
                                 TextFormField(
@@ -233,12 +188,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Por favor ingresa el color';
-                                    }
-                                    return null;
-                                  },
+                                  validator: (value) =>
+                                      value!.isEmpty ? 'Por favor ingresa el color' : null,
                                 ),
                                 const SizedBox(height: 12),
                                 TextFormField(
@@ -251,9 +202,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                                   ),
                                   keyboardType: TextInputType.number,
                                   validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Por favor ingresa el año';
-                                    }
+                                    if (value!.isEmpty) return 'Por favor ingresa el año';
                                     try {
                                       int anio = int.parse(value);
                                       if (anio < 1900 || anio > DateTime.now().year) {
@@ -286,7 +235,6 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                         ),
                       ),
                     ),
-                    // Lista de vehículos
                     Expanded(
                       child: vehicles.isEmpty
                           ? const Center(child: Text('No hay vehículos registrados'))
@@ -306,7 +254,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                                       '${vehicle['marca']} ${vehicle['modelo']}',
                                       style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
-                                    subtitle: Text('Año: ${vehicle['anio']} | Color: ${vehicle['color']}'),
+                                    subtitle: Text('Año: ${vehicle['año']} | Color: ${vehicle['color']}'),
                                   ),
                                 );
                               },
