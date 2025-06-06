@@ -18,7 +18,8 @@ class VehiclesScreen extends StatefulWidget {
   State<VehiclesScreen> createState() => _VehiclesScreenState();
 }
 
-class _VehiclesScreenState extends State<VehiclesScreen> {
+class _VehiclesScreenState extends State<VehiclesScreen>
+    with SingleTickerProviderStateMixin {
   List<dynamic> vehicles = [];
   bool isLoading = true;
   String errorMessage = '';
@@ -27,10 +28,12 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   final TextEditingController colorController = TextEditingController();
   final TextEditingController anioController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     print('Token recibido en VehiclesScreen: ${widget.token}');
     fetchVehicles();
   }
@@ -41,6 +44,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     modeloController.dispose();
     colorController.dispose();
     anioController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -102,23 +106,47 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vehículo guardado exitosamente')),
+          SnackBar(
+            content: const Text('Vehículo guardado exitosamente'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
         );
         marcaController.clear();
         modeloController.clear();
         colorController.clear();
         anioController.clear();
         await fetchVehicles();
+        _tabController.animateTo(0); // Volver a la pestaña de lista
       } else {
         final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar vehículo: ${error['error'] ?? response.body}')),
+          SnackBar(
+            content: Text(
+              'Error al guardar vehículo: ${error['error'] ?? response.body}',
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
         );
       }
     } catch (e) {
       print('Error en saveVehicle: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al guardar vehículo: $e')),
+        SnackBar(
+          content: Text('Error al guardar vehículo: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       );
     }
   }
@@ -127,142 +155,290 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vehículos'),
-        backgroundColor: Colors.blue.shade600,
+        title: const Text(
+          'Mis Vehículos',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        backgroundColor: Colors.blue.shade900,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.normal,
+            fontSize: 14,
+          ),
+          tabs: const [
+            Tab(icon: Icon(Icons.list), text: 'Lista'),
+            Tab(icon: Icon(Icons.add_circle_outline), text: 'Añadir'),
+          ],
+        ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage.isNotEmpty
-              ? Center(child: Text(errorMessage, style: const TextStyle(color: Colors.red)))
-              : Column(
+      body:
+          isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: Colors.blue),
+              )
+              : errorMessage.isNotEmpty
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      errorMessage,
+                      style: const TextStyle(color: Colors.red, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: fetchVehicles,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade900,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              )
+              : TabBarView(
+                controller: _tabController,
+                children: [
+                  // Pestaña 1: Lista de Vehículos
+                  vehicles.isEmpty
+                      ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.directions_car,
+                              size: 80,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No hay vehículos registrados',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : RefreshIndicator(
+                        onRefresh: fetchVehicles,
+                        color: Colors.blue,
+                        child: ListView.builder(
                           padding: const EdgeInsets.all(16.0),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Agregar Nuevo Vehículo',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                          itemCount: vehicles.length,
+                          itemBuilder: (context, index) {
+                            final vehicle = vehicles[index];
+                            return Card(
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.all(16),
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.blue.shade100,
+                                  child: const Icon(
+                                    Icons.directions_car,
                                     color: Colors.blue,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                TextFormField(
-                                  controller: marcaController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Marca',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
+                                title: Text(
+                                  '${vehicle['marca']} ${vehicle['modelo']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
                                   ),
-                                  validator: (value) =>
-                                      value!.isEmpty ? 'Por favor ingresa la marca' : null,
                                 ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: modeloController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Modelo',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  validator: (value) =>
-                                      value!.isEmpty ? 'Por favor ingresa el modelo' : null,
+                                subtitle: Text(
+                                  'Año: ${vehicle['año']} | Color: ${vehicle['color']}',
+                                  style: const TextStyle(color: Colors.grey),
                                 ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: colorController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Color',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  validator: (value) =>
-                                      value!.isEmpty ? 'Por favor ingresa el color' : null,
+                                trailing: const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                  color: Colors.grey,
                                 ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: anioController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Año',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                  // Pestaña 2: Añadir Vehículo
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Card(
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Agregar Nuevo Vehículo',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: marcaController,
+                                decoration: InputDecoration(
+                                  labelText: 'Marca',
+                                  prefixIcon: const Icon(
+                                    Icons.branding_watermark,
+                                    color: Colors.blue,
                                   ),
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) {
-                                    if (value!.isEmpty) return 'Por favor ingresa el año';
-                                    try {
-                                      int anio = int.parse(value);
-                                      if (anio < 1900 || anio > DateTime.now().year) {
-                                        return 'Año inválido';
-                                      }
-                                    } catch (e) {
-                                      return 'El año debe ser un número válido';
+                                  filled: true,
+                                  fillColor: Colors.blue.shade50,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                validator:
+                                    (value) =>
+                                        value!.isEmpty
+                                            ? 'Por favor ingresa la marca'
+                                            : null,
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: modeloController,
+                                decoration: InputDecoration(
+                                  labelText: 'Modelo',
+                                  prefixIcon: const Icon(
+                                    Icons.directions_car,
+                                    color: Colors.blue,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.blue.shade50,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                validator:
+                                    (value) =>
+                                        value!.isEmpty
+                                            ? 'Por favor ingresa el modelo'
+                                            : null,
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: colorController,
+                                decoration: InputDecoration(
+                                  labelText: 'Color',
+                                  prefixIcon: const Icon(
+                                    Icons.color_lens,
+                                    color: Colors.blue,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.blue.shade50,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                validator:
+                                    (value) =>
+                                        value!.isEmpty
+                                            ? 'Por favor ingresa el color'
+                                            : null,
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: anioController,
+                                decoration: InputDecoration(
+                                  labelText: 'Año',
+                                  prefixIcon: const Icon(
+                                    Icons.calendar_today,
+                                    color: Colors.blue,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.blue.shade50,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value!.isEmpty)
+                                    return 'Por favor ingresa el año';
+                                  try {
+                                    int anio = int.parse(value);
+                                    if (anio < 1900 ||
+                                        anio > DateTime.now().year) {
+                                      return 'Año inválido';
                                     }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: saveVehicle,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue.shade600,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
+                                  } catch (e) {
+                                    return 'El año debe ser un número válido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: saveVehicle,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue.shade900,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
                                     ),
-                                    child: const Text('Guardar Vehículo'),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 5,
+                                  ),
+                                  child: const Text(
+                                    'Guardar Vehículo',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: vehicles.isEmpty
-                          ? const Center(child: Text('No hay vehículos registrados'))
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              itemCount: vehicles.length,
-                              itemBuilder: (context, index) {
-                                final vehicle = vehicles[index];
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 12.0),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.all(16.0),
-                                    title: Text(
-                                      '${vehicle['marca']} ${vehicle['modelo']}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                    subtitle: Text('Año: ${vehicle['año']} | Color: ${vehicle['color']}'),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
     );
   }
 }
