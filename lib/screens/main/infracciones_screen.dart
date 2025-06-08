@@ -18,6 +18,7 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
   String errorMessage = '';
   DateTime? selectedDate;
   String? selectedPagado;
+  final TextEditingController _placaController = TextEditingController();
 
   @override
   void initState() {
@@ -25,7 +26,13 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
     fetchInfracciones();
   }
 
-  Future<void> fetchInfracciones({String? fecha, String? pagado}) async {
+  @override
+  void dispose() {
+    _placaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> fetchInfracciones({String? fecha, String? pagado, String? placa}) async {
     setState(() {
       isLoading = true;
       errorMessage = '';
@@ -33,10 +40,11 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
 
     try {
       var url = Uri.parse('http://192.168.1.9:8080/api/infracciones/');
-      if (fecha != null || pagado != null) {
+      if (fecha != null || pagado != null || placa != null) {
         final queryParams = <String, String>{};
         if (fecha != null) queryParams['fecha'] = fecha;
         if (pagado != null) queryParams['pagado'] = pagado;
+        if (placa != null && placa.isNotEmpty) queryParams['placa'] = placa;
         url = Uri.http(url.authority, url.path, queryParams);
       }
 
@@ -67,6 +75,62 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
     }
   }
 
+  Future<void> updateInfraccionPagado(int infraccionId, bool pagado) async {
+    try {
+      final requestBody = {
+        'id': infraccionId,
+        'pagado': pagado,
+      };
+      
+      print('Enviando PATCH request:');
+      print('URL: http://192.168.1.9:8080/api/infracciones/');
+      print('Body: ${json.encode(requestBody)}');
+      
+      final response = await http.patch(
+        Uri.parse('http://192.168.1.9:8080/api/infracciones/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+        body: json.encode(requestBody),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        // Actualizar la lista local
+        setState(() {
+          final index = infracciones.indexWhere((inf) => inf['id'] == infraccionId);
+          if (index != -1) {
+            infracciones[index]['pagado'] = pagado;
+          }
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Estado actualizado a ${pagado ? 'Pagado' : 'No Pagado'}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar el estado: ${response.statusCode} - ${response.body}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -78,11 +142,7 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
       setState(() {
         selectedDate = picked;
       });
-      final formatter = DateFormat('yyyy-MM-dd');
-      fetchInfracciones(
-        fecha: formatter.format(picked),
-        pagado: selectedPagado,
-      );
+      _applyFilters();
     }
   }
 
@@ -90,6 +150,7 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
     fetchInfracciones(
       fecha: selectedDate != null ? DateFormat('yyyy-MM-dd').format(selectedDate!) : null,
       pagado: selectedPagado,
+      placa: _placaController.text.trim().isNotEmpty ? _placaController.text.trim() : null,
     );
   }
 
@@ -97,8 +158,60 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
     setState(() {
       selectedDate = null;
       selectedPagado = null;
+      _placaController.clear();
     });
     fetchInfracciones();
+  }
+
+  void _showEditDialog(Map<String, dynamic> infraccion) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Editar Infracción'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Placa: ${infraccion['placa']}', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Fecha: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(infraccion['fecha_hora']))}'),
+              SizedBox(height: 16),
+              Text('Estado actual: ${infraccion['pagado'] ? 'Pagado' : 'No Pagado'}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancelar'),
+            ),
+            if (!infraccion['pagado'])
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  updateInfraccionPagado(infraccion['id'], true);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Marcar como Pagado'),
+              ),
+            if (infraccion['pagado'])
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  updateInfraccionPagado(infraccion['id'], false);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Marcar como No Pagado'),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -119,6 +232,39 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
                     const Text(
                       'Filtros',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                    ),
+                    const SizedBox(height: 16),
+                    // Campo de filtro por placa
+                    TextField(
+                      controller: _placaController,
+                      decoration: InputDecoration(
+                        labelText: 'Filtrar por placa',
+                        prefixIcon: const Icon(Icons.drive_eta, color: Colors.green),
+                        filled: true,
+                        fillColor: Colors.green.shade50,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        hintText: 'Ingresa placa (ej: ABC123)',
+                        suffixIcon: _placaController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _placaController.clear();
+                                  _applyFilters();
+                                },
+                              )
+                            : null,
+                      ),
+                      onChanged: (value) {
+                        // Aplicar filtro automáticamente después de 500ms de pausa
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          if (_placaController.text == value) {
+                            _applyFilters();
+                          }
+                        });
+                      },
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -234,6 +380,7 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
                             onRefresh: () => fetchInfracciones(
                               fecha: selectedDate != null ? DateFormat('yyyy-MM-dd').format(selectedDate!) : null,
                               pagado: selectedPagado,
+                              placa: _placaController.text.trim().isNotEmpty ? _placaController.text.trim() : null,
                             ),
                             color: Colors.green,
                             child: ListView.builder(
@@ -248,8 +395,13 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
                                   child: ListTile(
                                     contentPadding: const EdgeInsets.all(16),
                                     leading: CircleAvatar(
-                                      backgroundColor: Colors.green.shade100,
-                                      child: const Icon(Icons.warning, color: Colors.green),
+                                      backgroundColor: infraccion['pagado'] 
+                                          ? Colors.green.shade100 
+                                          : Colors.red.shade100,
+                                      child: Icon(
+                                        infraccion['pagado'] ? Icons.check_circle : Icons.warning,
+                                        color: infraccion['pagado'] ? Colors.green : Colors.red,
+                                      ),
                                     ),
                                     title: Text(
                                       'Placa: ${infraccion['placa']}',
@@ -259,10 +411,25 @@ class _InfraccionesScreenState extends State<InfraccionesScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text('Fecha: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(infraccion['fecha_hora']))}'),
-                                        Text('Estado: ${infraccion['pagado'] ? 'Pagado' : 'No Pagado'}'),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: infraccion['pagado'] ? Colors.green : Colors.red,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            infraccion['pagado'] ? 'Pagado' : 'No Pagado',
+                                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                                          ),
+                                        ),
                                         Text('Coordenadas: ${infraccion['latitud']}, ${infraccion['longitud']}'),
                                       ],
                                     ),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.blue),
+                                      onPressed: () => _showEditDialog(infraccion),
+                                    ),
+                                    onTap: () => _showEditDialog(infraccion),
                                   ),
                                 );
                               },
