@@ -3,9 +3,17 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:location/location.dart';
+import 'package:intl/intl.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final String role;
+  final String token;
+
+  const MapScreen({
+    super.key,
+    required this.role,
+    required this.token,
+  });
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -13,36 +21,37 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   GoogleMapController? _controller;
-  final Set<Polygon> _polygons = {}; // Para la zona restringida
-  final Set<Polyline> _polylines = {}; // Para las franjas rojas
-  String? _errorMessage; // Para mostrar errores de la API o ubicación
-  LocationData? _currentLocation; // Para la ubicación actual
+  final Set<Polygon> _polygons = {};
+  final Set<Polyline> _polylines = {};
+  String? _errorMessage;
+  LocationData? _currentLocation;
   final Location _location = Location();
+  final TextEditingController _placaController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  // API para restricciones de estacionamiento
-  final String restrictionsApiUrl = 'http://192.168.1.10:8000/api/zonas-restringidas/'; // Para dispositivo físico
-  // final String restrictionsApiUrl = 'http://10.0.2.2:8000/api/restrictions/'; // Descomenta para emulador
-
-  // Modo de visualización: 'restrictions' (calles), 'zone' (polígono), 'both' (ambos)
+  final String restrictionsApiUrl = 'http://192.168.1.9:8000/api/zonas-restringidas/';
+  final String infraccionesApiUrl = 'http://192.168.1.9:8080/api/infracciones/';
   String _displayMode = 'both';
 
   @override
   void initState() {
     super.initState();
-    _loadRestrictions(); // Carga las calles restringidas desde la API
-    _loadRestrictedZone(); // Carga la zona restringida con coordenadas estáticas
-    _getCurrentLocation(); // Obtiene la ubicación actual
+    _loadRestrictions();
+    _loadRestrictedZone();
+    _getCurrentLocation();
   }
 
-  // Obtener la ubicación actual
+  @override
+  void dispose() {
+    _placaController.dispose();
+    super.dispose();
+  }
+
   Future<void> _getCurrentLocation() async {
-    print('Iniciando obtención de ubicación...');
     try {
       bool serviceEnabled = await _location.serviceEnabled();
-      print('Servicio de ubicación habilitado: $serviceEnabled');
       if (!serviceEnabled) {
         serviceEnabled = await _location.requestService();
-        print('Solicitando servicio de ubicación: $serviceEnabled');
         if (!serviceEnabled) {
           setState(() {
             _errorMessage = 'El servicio de ubicación está deshabilitado.';
@@ -52,10 +61,8 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       PermissionStatus permissionGranted = await _location.hasPermission();
-      print('Estado del permiso: $permissionGranted');
       if (permissionGranted == PermissionStatus.denied) {
         permissionGranted = await _location.requestPermission();
-        print('Solicitando permiso: $permissionGranted');
         if (permissionGranted != PermissionStatus.granted) {
           setState(() {
             _errorMessage = 'Permiso de ubicación denegado.';
@@ -65,7 +72,6 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       final locationData = await _location.getLocation();
-      print('Ubicación obtenida: lat=${locationData.latitude}, lon=${locationData.longitude}');
       setState(() {
         _currentLocation = locationData;
       });
@@ -81,25 +87,17 @@ class _MapScreenState extends State<MapScreen> {
         );
       }
     } catch (e) {
-      print('Error al obtener ubicación: $e');
       setState(() {
         _errorMessage = 'Error al obtener ubicación: $e';
       });
     }
   }
 
-  // Cargar restricciones de estacionamiento desde la API
   Future<void> _loadRestrictions() async {
     try {
-      print('Intentando cargar restricciones desde: $restrictionsApiUrl');
       final response = await http.get(Uri.parse(restrictionsApiUrl));
-      print('Código de estado: ${response.statusCode}');
-      print('Respuesta: ${response.body}');
-
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        print('Datos recibidos: $data');
-
         if (data.isEmpty) {
           setState(() {
             _errorMessage = 'No se encontraron restricciones.';
@@ -108,7 +106,7 @@ class _MapScreenState extends State<MapScreen> {
         }
 
         setState(() {
-          _polylines.clear(); // Limpiar líneas anteriores
+          _polylines.clear();
           for (var item in data) {
             if (item['coordenada1_lat'] != null &&
                 item['coordenada1_lon'] != null &&
@@ -125,8 +123,6 @@ class _MapScreenState extends State<MapScreen> {
                   width: 6,
                 ),
               );
-            } else {
-              print('Datos incompletos en: $item');
             }
           }
           _errorMessage = _polylines.isEmpty
@@ -139,24 +135,22 @@ class _MapScreenState extends State<MapScreen> {
         });
       }
     } catch (e) {
-      print('Error de conexión: $e');
       setState(() {
         _errorMessage = 'Error de conexión: $e';
       });
     }
   }
 
-  // Cargar coordenadas estáticas de la zona restringida
   void _loadRestrictedZone() {
     final List<LatLng> polygonPoints = [
-      LatLng(-19.043649, -65.259926), // Punto 1
-      LatLng(-19.048225, -65.263821), // Punto 2
+      LatLng(-19.043649, -65.259926),
+      LatLng(-19.048225, -65.263821),
       LatLng(-19.052142742264422, -65.259280231523),
-      LatLng(-19.04746079069352, -65.25523259852747), // Punto 4
+      LatLng(-19.04746079069352, -65.25523259852747),
     ];
 
     setState(() {
-      _polygons.clear(); // Limpiar polígonos anteriores
+      _polygons.clear();
       _polygons.add(
         Polygon(
           polygonId: const PolygonId('restricted_zone'),
@@ -169,7 +163,6 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  // Alternar modo de visualización
   void _toggleDisplayMode() {
     setState(() {
       if (_displayMode == 'both') {
@@ -182,7 +175,6 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  // Obtener el icono según el modo
   IconData _getModeIcon() {
     switch (_displayMode) {
       case 'restrictions':
@@ -194,14 +186,184 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // Obtener los polylines según el modo
   Set<Polyline> _getVisiblePolylines() {
     return _displayMode == 'restrictions' || _displayMode == 'both' ? _polylines : {};
   }
 
-  // Obtener los polígonos según el modo
   Set<Polygon> _getVisiblePolygons() {
     return _displayMode == 'zone' || _displayMode == 'both' ? _polygons : {};
+  }
+
+  Future<void> _registrarInfraccion() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_currentLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No se pudo obtener la ubicación actual.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse(infraccionesApiUrl),
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+        body: jsonEncode({
+          'placa': _placaController.text,
+          'latitud': _currentLocation!.latitude,
+          'longitud': _currentLocation!.longitude,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Infracción registrada exitosamente'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        Navigator.of(context).pop(); // Cerrar el modal
+        _placaController.clear();
+      } else {
+        final error = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al registrar infracción: ${error['error'] ?? response.body}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al registrar infracción: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  void _showInfraccionModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final now = DateTime.now();
+        final formatter = DateFormat('MM/dd/yyyy hh:mm:ss a');
+        final fechaHora = formatter.format(now);
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Registrar Infracción',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _placaController,
+                  decoration: InputDecoration(
+                    labelText: 'Placa',
+                    prefixIcon: const Icon(Icons.confirmation_number, color: Colors.green),
+                    filled: true,
+                    fillColor: Colors.green.shade50,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  validator: (value) => value!.isEmpty ? 'Por favor ingresa la placa' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  initialValue: _currentLocation != null
+                      ? '${_currentLocation!.latitude}, ${_currentLocation!.longitude}'
+                      : 'No disponible',
+                  decoration: InputDecoration(
+                    labelText: 'Coordenadas',
+                    prefixIcon: const Icon(Icons.location_on, color: Colors.green),
+                    filled: true,
+                    fillColor: Colors.green.shade50,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  readOnly: true,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  initialValue: fechaHora,
+                  decoration: InputDecoration(
+                    labelText: 'Fecha y Hora',
+                    prefixIcon: const Icon(Icons.calendar_today, color: Colors.green),
+                    filled: true,
+                    fillColor: Colors.green.shade50,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  readOnly: true,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _registrarInfraccion,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade900,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 5,
+                    ),
+                    child: const Text(
+                      'Registrar Infracción',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -227,8 +389,8 @@ class _MapScreenState extends State<MapScreen> {
                 );
               }
             },
-            polygons: _getVisiblePolygons(), // Muestra el polígono según el modo
-            polylines: _getVisiblePolylines(), // Muestra las franjas según el modo
+            polygons: _getVisiblePolygons(),
+            polylines: _getVisiblePolylines(),
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
           ),
@@ -244,6 +406,16 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          if (widget.role == 'policia')
+            Positioned(
+              bottom: 80,
+              left: 10,
+              child: FloatingActionButton(
+                onPressed: _showInfraccionModal,
+                backgroundColor: Colors.green,
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            ),
           if (_errorMessage != null)
             Positioned(
               top: 10,

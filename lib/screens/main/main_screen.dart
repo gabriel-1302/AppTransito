@@ -7,7 +7,7 @@ import 'info_screen.dart';
 import 'admin_screen.dart';
 import 'vehicles_screen.dart';
 import '../auth/auth_screen.dart';
-import '../../services/api_service_auth.dart'; // Importar ApiServiceAuth
+import '../../services/api_service_auth.dart';
 import '../../second_app/screens/second_app_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -37,7 +37,10 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     
     _screens = [
-      const MapScreen(), // Índice 0
+      MapScreen(
+        role: widget.role,
+        token: widget.token,
+      ), // Índice 0
       InfoScreen(
         title: 'Código de Tránsito', 
         message: AppConstants.codigoTransito,
@@ -52,7 +55,7 @@ class _MainScreenState extends State<MainScreen> {
       ), // Índice 3
       VehiclesScreen(
         token: widget.token,
-        role: widget.role, // Agregar el parámetro role
+        role: widget.role,
         userProfileId: widget.userProfileId,
       ), // Índice 4
       if (widget.role == Roles.policia) ...[
@@ -107,8 +110,8 @@ class _MainScreenState extends State<MainScreen> {
 
   Color _getAppBarColor() {
     return widget.role == Roles.ciudadano 
-        ? Colors.blue // Azul para Ciudadano
-        : Colors.green; // Verde para Policía
+        ? Colors.blue
+        : Colors.green;
   }
 
   @override
@@ -156,8 +159,6 @@ class _MainScreenState extends State<MainScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 20),
-                    
-                    // Botón Mapa
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                       child: Material(
@@ -192,8 +193,6 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       ),
                     ),
-                    
-                    // Botón Información
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                       child: Material(
@@ -228,8 +227,6 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       ),
                     ),
-                    
-                    // Botón Horarios
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                       child: Material(
@@ -264,8 +261,6 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       ),
                     ),
-                    
-                    // Botón Ayuda
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                       child: Material(
@@ -300,12 +295,10 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       ),
                     ),
-                    
-                    // Botón Autos
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                       child: Material(
-                        color: _currentIndex == 4 ? Colors.blue : Colors.blue.withOpacity(0.1),
+                        color: _currentIndex == 4 ? Colors.blue.withOpacity(0.1) : Colors.transparent,
                         borderRadius: BorderRadius.circular(8.0),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8.0),
@@ -336,10 +329,7 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       ),
                     ),
-                    
-                    // Botones específicos para policía
                     if (widget.role == Roles.policia) ...[
-                      // Botón Admin
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                         child: Material(
@@ -374,8 +364,6 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                         ),
                       ),
-                      
-                      // Botón Notificaciones
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                         child: Material(
@@ -411,10 +399,7 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       ),
                     ],
-                    
                     const Spacer(),
-                    
-                    // Botón Cerrar Sesión
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: ElevatedButton.icon(

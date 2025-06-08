@@ -19,7 +19,7 @@ class _SecondAppScreenState extends State<SecondAppScreen> {
       FlutterLocalNotificationsPlugin();
   
   int _notificationId = 0;
-  final String apiBaseUrl = 'http://192.168.1.11:8000';
+  final String apiBaseUrl = 'http://192.168.1.9:8001';
   String get apiUrl => '$apiBaseUrl/api/infractions/';
   int lastProcessedId = 0;
   Timer? _timer;
