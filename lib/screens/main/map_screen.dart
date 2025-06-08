@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:location/location.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 class MapScreen extends StatefulWidget {
   final String role;
@@ -23,11 +24,13 @@ class _MapScreenState extends State<MapScreen> {
   GoogleMapController? _controller;
   final Set<Polygon> _polygons = {};
   final Set<Polyline> _polylines = {};
+  final Set<Marker> _markers = {};
   String? _errorMessage;
   LocationData? _currentLocation;
   final Location _location = Location();
   final TextEditingController _placaController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  Timer? _infraccionesTimer;
 
   final String restrictionsApiUrl = 'http://192.168.1.9:8000/api/zonas-restringidas/';
   final String infraccionesApiUrl = 'http://192.168.1.9:8080/api/infracciones/';
@@ -39,12 +42,63 @@ class _MapScreenState extends State<MapScreen> {
     _loadRestrictions();
     _loadRestrictedZone();
     _getCurrentLocation();
+    if (widget.role == 'policia') {
+      _fetchInfracciones();
+      _infraccionesTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+        _fetchInfracciones();
+      });
+    }
   }
 
   @override
   void dispose() {
     _placaController.dispose();
+    _infraccionesTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _fetchInfracciones() async {
+    if (widget.role != 'policia') return;
+
+    try {
+      final response = await http.get(
+        Uri.parse('$infraccionesApiUrl?pagado=false'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+        setState(() {
+          _markers.removeWhere((marker) => marker.markerId.value.startsWith('infraccion_'));
+          for (var infraccion in data) {
+            if (infraccion['latitud'] != null && infraccion['longitud'] != null) {
+              _markers.add(
+                Marker(
+                  markerId: MarkerId('infraccion_${infraccion['id']}'),
+                  position: LatLng(infraccion['latitud'], infraccion['longitud']),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                  infoWindow: InfoWindow(
+                    title: 'Infracción: ${infraccion['placa']}',
+                    snippet: 'Fecha: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(infraccion['fecha_hora']))}',
+                  ),
+                ),
+              );
+            }
+          }
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Error al cargar infracciones: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error al cargar infracciones: $e';
+      });
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -232,8 +286,11 @@ class _MapScreenState extends State<MapScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-        Navigator.of(context).pop(); // Cerrar el modal
+        Navigator.of(context).pop();
         _placaController.clear();
+        if (widget.role == 'policia') {
+          _fetchInfracciones();
+        }
       } else {
         final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -347,7 +404,7 @@ class _MapScreenState extends State<MapScreen> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(24),
                       ),
                       elevation: 5,
                     ),
@@ -391,6 +448,7 @@ class _MapScreenState extends State<MapScreen> {
             },
             polygons: _getVisiblePolygons(),
             polylines: _getVisiblePolylines(),
+            markers: _markers,
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
           ),
