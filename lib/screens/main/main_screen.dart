@@ -6,6 +6,7 @@ import 'map_screen.dart';
 import 'info_screen.dart';
 import 'admin_screen.dart';
 import 'vehicles_screen.dart';
+import 'infracciones_screen.dart';
 import '../auth/auth_screen.dart';
 import '../../services/api_service_auth.dart';
 import '../../second_app/screens/second_app_screen.dart';
@@ -61,6 +62,9 @@ class _MainScreenState extends State<MainScreen> {
       if (widget.role == Roles.policia) ...[
         const AdminScreen(), // Índice 5 para policía
         const SecondAppScreen(), // Índice 6 para policía
+        InfraccionesScreen(
+          token: widget.token,
+        ), // Índice 7 para policía
       ],
     ];
 
@@ -103,6 +107,8 @@ class _MainScreenState extends State<MainScreen> {
         return widget.role == Roles.policia ? 'Panel de Administración' : '';
       case 6:
         return widget.role == Roles.policia ? 'Notificaciones API' : '';
+      case 7:
+        return widget.role == Roles.policia ? 'Infracciones' : '';
       default:
         return 'App de Tránsito Inteligente';
     }
@@ -388,6 +394,40 @@ class _MainScreenState extends State<MainScreen> {
                                       style: TextStyle(
                                         color: _currentIndex == 6 ? Colors.green : Colors.grey[700],
                                         fontWeight: _currentIndex == 6 ? FontWeight.bold : FontWeight.normal,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                        child: Material(
+                          color: _currentIndex == 7 ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8.0),
+                            onTap: () => _changeScreen(7),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.warning,
+                                    color: _currentIndex == 7 ? Colors.green : Colors.grey[700],
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12.0),
+                                  Expanded(
+                                    child: Text(
+                                      'Infracciones',
+                                      style: TextStyle(
+                                        color: _currentIndex == 7 ? Colors.green : Colors.grey[700],
+                                        fontWeight: _currentIndex == 7 ? FontWeight.bold : FontWeight.normal,
                                         fontSize: 14,
                                       ),
                                     ),
